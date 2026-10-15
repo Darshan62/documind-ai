@@ -39,7 +39,7 @@ If you downloaded an earlier GitHub ZIP, stop the server and download the update
 
 Keep keys private. `.env` is ignored by Git. Keys are used only on the server, never bundled into the browser. In Codex cloud settings, bind `GEMINI_API_KEY` securely and allow HTTPS to `generativelanguage.googleapis.com`.
 
-With no key, the application returns direct source passages. With a Gemini key, it sends your question and up to four relevant excerpts to Google for a cited answer. Before using private documents, review [Google's Gemini API terms](https://ai.google.dev/gemini-api/terms), including data use for unpaid services. Each question is independent; the chat display is not conversational memory. Generated answers still need human verification.
+With no key, the application returns direct source passages. With a Gemini key, it sends your question and up to four matching excerpts (or up to twelve sampled excerpts for summaries and questions without keyword matches) to Google for a cited answer. Before using private documents, review [Google's Gemini API terms](https://ai.google.dev/gemini-api/terms), including data use for unpaid services. Each question is independent; the chat display is not conversational memory. Generated answers still need human verification.
 
 Existing OpenAI users can keep `DOCUMIND_API_KEY` and optional `DOCUMIND_MODEL` (default `gpt-4.1-mini`). Gemini takes priority if both providers' keys are set. OpenAI requests go to `api.openai.com`.
 
@@ -47,7 +47,7 @@ Existing OpenAI users can keep `DOCUMIND_API_KEY` and optional `DOCUMIND_MODEL` 
 
 - Parsed document text and metadata persist in `.data/documents.json`, excluded from Git. Override the storage directory with `DOCUMIND_DATA_DIR`.
 - Files must be PDF, UTF-8 TXT, or Markdown, at most 10 MB and 2 million extracted characters. The workspace accepts up to 100 documents. Scanned PDFs require OCR elsewhere first.
-- Retrieval uses word overlap, not embeddings or semantic search. It works best with specific terms present in the document. Only matching passages are passed to the optional AI.
+- Retrieval uses word overlap, not embeddings or semantic search. It works best with specific terms present in the document. Summary requests use document excerpts even without keyword matches. When AI is configured, questions without matches also receive sampled context so the model can assess the question. Overview context is limited to twelve excerpts of at most 2,000 characters each, from at most twelve documents; select a specific document for more complete coverage. This is not exhaustive analysis of large files.
 - Chats remain in browser memory until reload. Deleting a document clears the current chat. Original upload files are never modified or retained; extracted text is stored locally.
 - This is a single-user local application. It has no login, tenant separation, or public hosting configuration. Keep it bound to loopback. Persistent storage assumes one server process per data directory.
 - Fonts are bundled locally; local mode does not make external AI or font requests.

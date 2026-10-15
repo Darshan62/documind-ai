@@ -131,3 +131,31 @@ test('Gemini API flow reports its provider, returns cited answers, and surfaces 
   assert.equal(failed.status, 429);
   assert.match((await failed.json()).error, /quota or rate limit/);
 });
+
+test('a generic resume question reaches Gemini with only the selected resume', async context => {
+  const resume = await (await upload('resume.txt', 'Darshan is a software engineer. Skills include Java, Python and React. Education: Computer Science.')).json() as DocumentInfo;
+  process.env.GEMINI_API_KEY = 'test-only-not-a-real-key';
+  context.after(() => { delete process.env.GEMINI_API_KEY; });
+  const originalFetch = globalThis.fetch;
+  let providerCalls = 0;
+  context.mock.method(globalThis, 'fetch', async (input: Parameters<typeof fetch>[0], options?: Parameters<typeof fetch>[1]) => {
+    if (String(input).startsWith('https://generativelanguage.googleapis.com/')) {
+      providerCalls++;
+      const body = JSON.parse(String(options?.body));
+      const content = JSON.parse(body.contents[0].parts[0].text);
+      assert.ok(content.excerpts.length > 0);
+      assert.ok(content.excerpts.every((excerpt: { document: string }) => excerpt.document === 'resume.txt'));
+      assert.match(content.excerpts[0].text, /Java, Python and React/);
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'The resume describes a software engineer with Java, Python and React skills [1].' }] } }] }));
+    }
+    return originalFetch(input, options);
+  });
+  for (const question of ['tell me whats is in the document', 'Summarize my resume', 'What are the next steps?']) {
+    const response = await ask(question, [resume.id]);
+    assert.equal(response.status, 200);
+    const result = await response.json() as Answer;
+    assert.equal(result.mode, 'ai');
+    assert.equal(result.citations[0].documentId, resume.id);
+  }
+  assert.equal(providerCalls, 3);
+});

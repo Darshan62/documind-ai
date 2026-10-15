@@ -61,13 +61,13 @@ export function createApp(store: DocumentStore) {
     if (documentIds !== undefined && (!Array.isArray(documentIds) || !documentIds.every(id => typeof id === 'string'))) { res.status(400).json({ error: 'Invalid document selection.' }); return; }
     const documents = store.all().filter(document => !documentIds?.length || documentIds.includes(document.id));
     if (!documents.length) { res.status(400).json({ error: 'Upload a document before asking a question.' }); return; }
-    const citations = retrieve(documents, question);
+    const config = getAIConfig();
+    const citations = retrieve(documents, question, Boolean(config));
     if (!citations.length) {
       res.json({ answer: 'I couldn’t find a matching passage in the selected documents. Try using a specific name, topic, or phrase from your document.', citations: [], mode: 'local' }); return;
     }
-    const config = getAIConfig();
     if (!config) {
-      res.json({ answer: 'Here are the passages that match your question. These are direct excerpts from your documents, not an AI-generated answer.', citations, mode: 'local' }); return;
+      res.json({ answer: 'Here are source passages from your documents, not an AI-generated answer. To get a generated answer or summary, configure a Gemini API key and restart the server.', citations, mode: 'local' }); return;
     }
     try {
       const answer = await generateAnswer(config, question, citations);
