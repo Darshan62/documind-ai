@@ -19,11 +19,29 @@ npm run build    # Type check and production frontend build
 npm start        # Serve the production build on port 3000
 ```
 
-## Optional AI answers
+## Gemini AI answers (free-tier option)
 
-Set `DOCUMIND_API_KEY` on the server to an OpenAI API key, then restart. You can copy `.env.example` to the ignored `.env` file for local development. Never commit credentials. In a Codex cloud environment, configure the key securely in environment settings and allow HTTPS access to `api.openai.com`; use the variable name `DOCUMIND_API_KEY`. The default model is `gpt-4.1-mini`; override it with `DOCUMIND_MODEL`.
+1. Create an API key in [Google AI Studio](https://aistudio.google.com/apikey). Select a project with access to the Gemini API free tier. Availability and limits depend on your account, region, and chosen model; this app does not guarantee unlimited or free usage. Check your project's tier and quotas in AI Studio before enabling billing.
+2. Create a file named `.env` beside `package.json`. You can copy `.env.example` and rename the copy to `.env`. On Windows, ensure it is not accidentally named `.env.txt`.
+3. Add your key to that local file:
 
-With no key, the application clearly labels its results as direct source passages. With a key, it sends the question and up to four relevant excerpts to OpenAI for a cited answer. It does not silently substitute local results when an AI request fails. Each question is independent; the chat display is not conversational memory. Generated answers still need human verification.
+   ```env
+   GEMINI_API_KEY=your_actual_gemini_key_here
+   GEMINI_MODEL=gemini-2.5-flash-lite
+   PORT=3000
+   ```
+
+4. Stop the running server with Ctrl+C and run `npm run dev` again. Refresh the browser. **Gemini configured** means the server detected a key; upload a document and ask a question to verify that it works.
+
+The default model is `gemini-2.5-flash-lite`. If it is unavailable for your account, set `GEMINI_MODEL` to an available text model with free-tier access listed in [Google's model documentation](https://ai.google.dev/gemini-api/docs/models), then restart. For a quota/rate-limit error, wait and retry or check the project's limits in AI Studio. The app does not automatically switch to a paid model or another provider when Gemini fails.
+
+If you downloaded an earlier GitHub ZIP, stop the server and download the updated ZIP into a **new folder**. Open that folder in your IDE, create `.env` there, run `npm ci`, and then `npm run dev`. Keep the old folder until you have verified the update. To retain uploaded documents, copy its `.data` folder into the new folder before starting the new app. Do not copy the old `node_modules` folder.
+
+Keep keys private. `.env` is ignored by Git. Keys are used only on the server, never bundled into the browser. In Codex cloud settings, bind `GEMINI_API_KEY` securely and allow HTTPS to `generativelanguage.googleapis.com`.
+
+With no key, the application returns direct source passages. With a Gemini key, it sends your question and up to four relevant excerpts to Google for a cited answer. Before using private documents, review [Google's Gemini API terms](https://ai.google.dev/gemini-api/terms), including data use for unpaid services. Each question is independent; the chat display is not conversational memory. Generated answers still need human verification.
+
+Existing OpenAI users can keep `DOCUMIND_API_KEY` and optional `DOCUMIND_MODEL` (default `gpt-4.1-mini`). Gemini takes priority if both providers' keys are set. OpenAI requests go to `api.openai.com`.
 
 ## Storage and limits
 

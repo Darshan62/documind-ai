@@ -38,6 +38,7 @@ function App() {
   const [error, setError] = useState('');
   const [question, setQuestion] = useState('');
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
+  const [provider, setProvider] = useState('AI');
   const [mode, setMode] = useState<'local' | 'ai'>('local');
   const [showInfo, setShowInfo] = useState(false);
   const [deleting, setDeleting] = useState<DocumentInfo | null>(null);
@@ -49,8 +50,8 @@ function App() {
   async function load() {
     setLoading(true);
     try {
-      const [docs, health] = await Promise.all([api<DocumentInfo[]>('/api/documents'), api<{ mode: 'local' | 'ai' }>('/api/health')]);
-      setDocuments(docs); setMode(health.mode);
+      const [docs, health] = await Promise.all([api<DocumentInfo[]>('/api/documents'), api<{ mode: 'local' | 'ai'; provider?: string }>('/api/health')]);
+      setDocuments(docs); setMode(health.mode); setProvider(health.provider || 'AI');
     } catch (error) { setError((error as Error).message); }
     finally { setLoading(false); }
   }
@@ -114,7 +115,7 @@ function App() {
     </aside>
 
     <div className="main-shell">
-      <header className="topbar"><div>Workspace <span>/</span> <strong>{view === 'workspace' ? 'Ask your documents' : 'Document library'}</strong></div><button className="mode-badge" onClick={() => setShowInfo(true)}><span className="online-dot" /> {mode === 'ai' ? 'AI connected' : 'Local search'} <ChevronDown size={13} /></button></header>
+      <header className="topbar"><div>Workspace <span>/</span> <strong>{view === 'workspace' ? 'Ask your documents' : 'Document library'}</strong></div><button className="mode-badge" onClick={() => setShowInfo(true)}><span className="online-dot" /> {mode === 'ai' ? `${provider} configured` : 'Local search'} <ChevronDown size={13} /></button></header>
       <main>
         <div className="page-heading"><div><div className="eyebrow"><span /> A LITTLE CLARITY GOES A LONG WAY</div><h1>{view === 'workspace' ? 'Your documents, understood.' : 'A home for your knowledge.'}</h1><p>{view === 'workspace' ? 'Turn the things you read into the answers you need.' : 'Keep your source material together, ready for your next question.'}</p></div><button className="primary upload-top" onClick={() => fileInput.current?.click()} disabled={uploading}><Plus size={17} /> Upload documents</button></div>
         <input ref={fileInput} type="file" accept=".pdf,.txt,.md" multiple hidden aria-label="Upload documents" onChange={event => event.target.files && void upload(event.target.files)} />
@@ -147,7 +148,7 @@ function App() {
         <footer className="page-footer"><span>Built for curious minds.</span><span>Your knowledge. A clearer perspective.</span></footer>
       </main>
     </div>
-    {showInfo && <Modal titleId="info-title" onClose={() => setShowInfo(false)}><div className="modal-card"><button className="modal-close" aria-label="Close" autoFocus onClick={() => setShowInfo(false)}><X size={20} /></button><span className="brand-icon"><BookOpen size={24} /></span><h2 id="info-title">From documents to understanding.</h2><ol><li><strong>Bring your sources.</strong> Upload text-based PDFs, plain text, or Markdown.</li><li><strong>Ask a focused question.</strong> Select documents to narrow your search, or explore your whole library.</li><li><strong>Follow the evidence.</strong> Open citations to read the matching passages.</li></ol><p>{mode === 'ai' ? 'AI is connected. Your question and relevant excerpts are sent to OpenAI to generate an answer.' : 'Local mode is active. Search returns excerpts using matching words, without sending documents to an AI provider.'}</p><p>Documents persist on this machine. Chats last until you reload the page. This workspace is designed for one user.</p><button className="primary" onClick={() => setShowInfo(false)}>Let’s get started <ArrowRight size={16} /></button></div></Modal>}
+    {showInfo && <Modal titleId="info-title" onClose={() => setShowInfo(false)}><div className="modal-card"><button className="modal-close" aria-label="Close" autoFocus onClick={() => setShowInfo(false)}><X size={20} /></button><span className="brand-icon"><BookOpen size={24} /></span><h2 id="info-title">From documents to understanding.</h2><ol><li><strong>Bring your sources.</strong> Upload text-based PDFs, plain text, or Markdown.</li><li><strong>Ask a focused question.</strong> Select documents to narrow your search, or explore your whole library.</li><li><strong>Follow the evidence.</strong> Open citations to read the matching passages.</li></ol><p>{mode === 'ai' ? `${provider} is configured. Your question and relevant excerpts are sent to ${provider} to generate an answer. Ask a question to verify that your key and quota work.` : 'Local mode is active. Search returns excerpts using matching words, without sending documents to an AI provider.'}</p><p>Documents persist on this machine. Chats last until you reload the page. This workspace is designed for one user.</p><button className="primary" onClick={() => setShowInfo(false)}>Let’s get started <ArrowRight size={16} /></button></div></Modal>}
     {deleting && <Modal titleId="delete-title" onClose={() => { if (!removing) setDeleting(null); }}><div className="modal-card"><h2 id="delete-title">Remove this document?</h2><p><strong>{deleting.name}</strong> will be removed from this workspace. The current chat will also be cleared. Your original file will not be changed.</p><div className="modal-actions"><button className="secondary" autoFocus disabled={removing} onClick={() => setDeleting(null)}>Keep document</button><button className="danger" disabled={removing} onClick={() => void remove()}>{removing ? 'Removing…' : 'Remove document'}</button></div></div></Modal>}
   </div>;
 }

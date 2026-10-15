@@ -15,9 +15,11 @@ let server: Server;
 let base: string;
 let document: DocumentInfo;
 const originalKey = process.env.DOCUMIND_API_KEY;
+const originalGeminiKey = process.env.GEMINI_API_KEY;
 
 before(async () => {
   delete process.env.DOCUMIND_API_KEY;
+  delete process.env.GEMINI_API_KEY;
   server = createApp(store).listen(0, '127.0.0.1');
   await once(server, 'listening');
   const address = server.address();
@@ -28,6 +30,7 @@ after(async () => {
   server.closeAllConnections();
   await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   rmSync(directory, { recursive: true, force: true });
+  if (originalGeminiKey !== undefined) process.env.GEMINI_API_KEY = originalGeminiKey;
   if (originalKey !== undefined) process.env.DOCUMIND_API_KEY = originalKey;
 });
 async function upload(name: string, text: string, type = 'text/plain') {
@@ -103,4 +106,28 @@ test('deletes documents from persistent storage', async () => {
   assert.equal((await fetch(`${base}/api/documents/${document.id}`, { method: 'DELETE' })).status, 204);
   assert.equal(new DocumentStore(directory).list().some(item => item.id === document.id), false);
   assert.equal((await fetch(`${base}/api/documents/${document.id}`, { method: 'DELETE' })).status, 404);
+});
+
+test('Gemini API flow reports its provider, returns cited answers, and surfaces quota errors', async context => {
+  process.env.GEMINI_API_KEY = 'test-only-not-a-real-key';
+  context.after(() => { delete process.env.GEMINI_API_KEY; });
+  const originalFetch = globalThis.fetch;
+  let limited = false;
+  context.mock.method(globalThis, 'fetch', async (input: Parameters<typeof fetch>[0], options?: Parameters<typeof fetch>[1]) => {
+    if (String(input).startsWith('https://generativelanguage.googleapis.com/')) {
+      return new Response(JSON.stringify(limited ? { error: { message: 'quota' } } : { candidates: [{ content: { parts: [{ text: 'The lunar mission budget is 88000 dollars [1].' }] } }] }), { status: limited ? 429 : 200 });
+    }
+    return originalFetch(input, options);
+  });
+  assert.deepEqual(await (await fetch(`${base}/api/health`)).json(), { status: 'ok', mode: 'ai', provider: 'Gemini' });
+  const response = await ask('lunar mission budget');
+  assert.equal(response.status, 200);
+  const result = await response.json() as Answer;
+  assert.equal(result.mode, 'ai');
+  assert.match(result.answer, /88000 dollars \[1\]/);
+  assert.equal(result.citations[0].name, 'research.pdf');
+  limited = true;
+  const failed = await ask('lunar mission budget');
+  assert.equal(failed.status, 429);
+  assert.match((await failed.json()).error, /quota or rate limit/);
 });
